@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaskBoard Kanban</title>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f1eefb;
+    margin: 0;
+    color: #222;
+  }
+
+  /* Header */
+  .header {
+    background-color: #3b2a7a;
+    color: white;
+    padding: 14px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .header h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+  .new-btn {
+    background-color: #f5a623;
+    color: #222;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .container {
+    width: 96%;
+    max-width: 1250px;
+    margin: 20px auto;
+  }
+
+  /* Stats row */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 15px;
+  }
+  .stat-box {
+    background-color: white;
+    border: 1px solid #d9d2f0;
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-box .number {
+    font-size: 26px;
+    font-weight: bold;
+    color: #3b2a7a;
+  }
+  .stat-box.late .number {
+    color: #d93a3a;
+  }
+  .stat-box small {
+    color: #666;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    background-color: white;
+    border: 1px solid #d9d2f0;
+    border-radius: 10px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+  }
+  .progress-text {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 6px;
+  }
+  .progress-bar {
+    height: 12px;
+    background-color: #e4def5;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background-color: #2e9d5b;
+  }
+
+  /* Search and filter */
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+  }
+  .toolbar input {
+    flex: 1;
+    min-width: 180px;
+  }
+  .toolbar select {
+    width: 180px;
+  }
+
+  /* Board: 3 columns side by side */
+  .board {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    align-items: start;
+  }
+  .column {
+    background-color: #e4def5;
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 250px;
+  }
+  .column.drag-over {
+    background-color: #d2c8f2;
+    outline: 2px dashed #3b2a7a;
+  }
+  .column-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+  .count-pill {
+    background-color: #3b2a7a;
+    color: white;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 13px;
+  }
+
+  /* Task cards */
+  .task {
+    background-color: white;
+    border-radius: 8px;
+    border-left: 6px solid #999;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    cursor: grab;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  }
+  .task.High {
+    border-left-color: #d93a3a;
+  }
+  .task.Medium {
+    border-left-color: #f5a623;
+  }
+  .task.Low {
+    border-left-color: #2e9d5b;
+  }
+  .task.dragging {
+    opacity: 0.4;
+  }
+  .task h3 {
+    margin: 0 0 4px 0;
+    font-size: 15px;
+  }
+  .task.finished h3 {
+    text-decoration: line-through;
+    color: #777;
+  }
+  .task p {
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    color: #666;
+  }
+  .task .meta {
+    font-size: 12px;
+    color: #3b2a7a;
+    font-weight: bold;
+  }
+  .task .late-tag {
+    display: inline-block;
+    background-color: #d93a3a;
+    color: white;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    margin-left: 4px;
+  }
+  .task .priority-tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    color: white;
+    margin-right: 4px;
+  }
+  .priority-tag.High {
+    background-color: #d93a3a;
+  }
+  .priority-tag.Medium {
+    background-color: #f5a623;
+    color: #222;
+  }
+  .priority-tag.Low {
+    background-color: #2e9d5b;
+  }
+  .task .actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+  }
+  .task .actions button {
+    border: 1px solid #bbb;
+    background-color: #f7f7f7;
+    border-radius: 5px;
+    padding: 4px 9px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .task .actions .spacer {
+    flex: 1;
+  }
+  .task .actions .edit-btn {
+    background-color: #3b2a7a;
+    color: white;
+    border-color: #3b2a7a;
+  }
+  .task .actions .del-btn {
+    background-color: #d93a3a;
+    color: white;
+    border-color: #d93a3a;
+  }
+  .empty-text {
+    color: #777;
+    font-size: 13px;
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  /* Popup form */
+  .popup-bg {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    overflow: auto;
+    z-index: 10;
+  }
+  .popup-box {
+    background-color: white;
+    width: 440px;
+    max-width: 92%;
+    margin: 60px auto;
+    padding: 22px;
+    border-radius: 12px;
+  }
+  .popup-box h2 {
+    margin-top: 0;
+  }
+  label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+    font-size: 14px;
+  }
+  input, textarea, select {
+    width: 100%;
+    padding: 9px;
+    margin-top: 4px;
+    font-size: 14px;
+    border: 1px solid #bbb;
+    border-radius: 6px;
+  }
+  .row-two {
+    display: flex;
+    gap: 10px;
+  }
+  .row-two div {
+    flex: 1;
+  }
+  .error {
+    color: #d93a3a;
+    font-size: 13px;
+  }
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  .save-btn {
+    flex: 1;
+    background-color: #3b2a7a;
+    color: white;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .cancel-btn {
+    background-color: #888;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  /* Small message at the bottom */
+  .toast {
+    display: none;
+    position: fixed;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #222;
+    color: white;
+    padding: 12px 22px;
+    border-radius: 25px;
+    font-size: 14px;
+    z-index: 20;
+  }
+
+  /* Tablet and mobile: columns scroll sideways */
+  @media (max-width: 850px) {
+    .board {
+      grid-template-columns: repeat(3, 280px);
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+    .stats {
+      grid-template-columns: 1fr 1fr;
+    }
+    .row-two {
+      flex-direction: column;
+      gap: 0;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h1>TaskBoard</h1>
+    <button class="new-btn" onclick="openForm(0)">+ New Task</button>
+  </div>
+
+  <div class="container">
+
+    <!-- Numbers -->
+    <div class="stats">
+      <div class="stat-box"><div class="number" id="statTotal">0</div><small>Total Tasks</small></div>
+      <div class="stat-box"><div class="number" id="statProgress">0</div><small>In Progress</small></div>
+      <div class="stat-box"><div class="number" id="statDone">0</div><small>Completed</small></div>
+      <div class="stat-box late"><div class="number" id="statLate">0</div><small>Overdue</small></div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-wrap">
+      <div class="progress-text">
+        <span>Overall Progress</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <!-- Search and filter -->
+    <div class="toolbar">
+      <input type="text" id="searchBox" placeholder="Search by task name or person..." oninput="showBoard()">
+      <select id="filterPriority" onchange="showBoard()">
+        <option value="All">All priorities</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      </select>
+    </div>
+
+    <!-- Board -->
+    <div class="board">
+
+      <div class="column" id="col-todo" ondragover="allowDrop(event, 'todo')" ondragleave="leaveDrop('todo')" ondrop="dropTask(event, 'todo')">
+        <div class="column-title"><span>To Do</span><span class="count-pill" id="count-todo">0</span></div>
+        <div id="list-todo"></div>
+      </div>
+
+      <div class="column" id="col-progress" ondragover="allowDrop(event, 'progress')" ondragleave="leaveDrop('progress')" ondrop="dropTask(event, 'progress')">
+        <div class="column-title"><span>In Progress</span><span class="count-pill" id="count-progress">0</span></div>
+        <div id="list-progress"></div>
+      </div>
+
+      <div class="column" id="col-done" ondragover="allowDrop(event, 'done')" ondragleave="leaveDrop('done')" ondrop="dropTask(event, 'done')">
+        <div class="column-title"><span>Done</span><span class="count-pill" id="count-done">0</span></div>
+        <div id="list-done"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- New / Edit task popup -->
+  <div class="popup-bg" id="formPopup">
+    <div class="popup-box">
+      <h2 id="formTitle">New Task</h2>
+
+      <label>Task Title</label>
+      <input type="text" id="fTitle">
+      <div class="error" id="errTitle"></div>
+
+      <label>Description</label>
+      <textarea id="fDesc" rows="3"></textarea>
+      <div class="error" id="errDesc"></div>
+
+      <label>Assigned To</label>
+      <input type="text" id="fPerson">
+      <div class="error" id="errPerson"></div>
+
+      <div class="row-two">
+        <div>
+          <label>Priority</label>
+          <select id="fPriority">
+            <option value="High">High</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+        <div>
+          <label>Due Date</label>
+          <input type="date" id="fDue">
+          <div class="error" id="errDue"></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="save-btn" onclick="saveTask()">Save Task</button>
+        <button class="cancel-btn" onclick="closeForm()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  // Default tasks (shown the first time)
+  var defaultTasks = [
+    { id: 1, title: "Design home page",  desc: "Create the layout and colors",     person: "Arun",    priority: "High",   due: "2026-11-14", status: "progress" },
+    { id: 2, title: "Write test cases",  desc: "Test login and signup pages",      person: "Priya",   priority: "Medium", due: "2026-11-18", status: "todo" },
+    { id: 3, title: "Fix mobile menu",   desc: "Menu not opening on small phones", person: "Karthik", priority: "High",   due: "2026-11-09", status: "todo" },
+    { id: 4, title: "Update user guide", desc: "Add new screenshots",              person: "Meena",   priority: "Low",    due: "2026-11-25", status: "done" },
+    { id: 5, title: "Set up database",   desc: "Create tables for users",          person: "Arun",    priority: "Medium", due: "2026-11-20", status: "progress" }
+  ];
+
+  var tasks = [];
+  var editId = 0;
+  var dragId = 0;
+  var statuses = ["todo", "progress", "done"];
+
+  // ---------- Save and load ----------
+  function loadTasks() {
+    var saved = null;
+    try {
+      saved = localStorage.getItem("taskBoardData");
+    } catch (e) {
+      saved = null;
+    }
+    if (saved) {
+      tasks = JSON.parse(saved);
+    } else {
+      tasks = defaultTasks;
+    }
+  }
+
+  function saveTasks() {
+    try {
+      localStorage.setItem("taskBoardData", JSON.stringify(tasks));
+    } catch (e) {
+      // saving not available, ignore
+    }
+  }
+
+  // ---------- Helpers ----------
+  function safeText(text) {
+    text = String(text);
+    text = text.replace(/&/g, "&amp;");
+    text = text.replace(/</g, "&lt;");
+    text = text.replace(/>/g, "&gt;");
+    return text;
+  }
+
+  function getToday() {
+    var d = new Date();
+    var month = d.getMonth() + 1;
+    var day = d.getDate();
+    if (month < 10) { month = "0" + month; }
+    if (day < 10) { day = "0" + day; }
+    return d.getFullYear() + "-" + month + "-" + day;
+  }
+
+  function getTask(id) {
+    for (var i = 0; i < tasks.length; i++) {
+      if (tasks[i].id == id) {
+        return tasks[i];
+      }
+    }
+  }
+
+  function statusName(status) {
+    if (status == "todo") { return "To Do"; }
+    if (status == "progress") { return "In Progress"; }
+    return "Done";
+  }
+
+  function showToast(text) {
+    var t = document.getElementById("toast");
+    t.textContent = text;
+    t.style.display = "block";
+    setTimeout(function () {
+      t.style.display = "none";
+    }, 2200);
+  }
+
+  // ---------- Show the board ----------
+  function showBoard() {
+    var search = document.getElementById("searchBox").value.toLowerCase();
+    var filter = document.getElementById("filterPriority").value;
+    var today = getToday();
+
+    var lists = { todo: "", progress: "", done: "" };
+    var counts = { todo: 0, progress: 0, done: 0 };
+    var overdue = 0;
+
+    for (var i = 0; i < tasks.length; i++) {
+      var t = tasks[i];
+      var isLate = (t.status != "done" && t.due < today);
+      if (isLate) { overdue++; }
+
+      // search and filter
+      var text = (t.title + " " + t.person).toLowerCase();
+      if (search != "" && text.indexOf(search) == -1) { continue; }
+      if (filter != "All" && t.priority != filter) { continue; }
+
+      counts[t.status]++;
+
+      var cls = "task " + t.priority;
+      if (t.status == "done") { cls += " finished"; }
+
+      var html = '<div class="' + cls + '" draggable="true" ondragstart="dragStart(event, ' + t.id + ')" ondragend="dragEnd(event)">';
+      html += '<h3>' + safeText(t.title) + '</h3>';
+      html += '<p>' + safeText(t.desc) + '</p>';
+      html += '<div class="meta"><span class="priority-tag ' + t.priority + '">' + t.priority + '</span>';
+      html += safeText(t.person) + ' | ' + t.due;
+      if (isLate) { html += '<span class="late-tag">Overdue</span>'; }
+      html += '</div>';
+      html += '<div class="actions">';
+      if (t.status != "todo") {
+        html += '<button onclick="moveTask(' + t.id + ', -1)" title="Move left">&#9664;</button>';
+      }
+      if (t.status != "done") {
+        html += '<button onclick="moveTask(' + t.id + ', 1)" title="Move right">&#9654;</button>';
+      }
+      html += '<span class="spacer"></span>';
+      html += '<button class="edit-btn" onclick="openForm(' + t.id + ')">Edit</button>';
+      html += '<button class="del-btn" onclick="deleteTask(' + t.id + ')">Delete</button>';
+      html += '</div></div>';
+
+      lists[t.status] += html;
+    }
+
+    for (var s = 0; s < statuses.length; s++) {
+      var st = statuses[s];
+      if (lists[st] == "") {
+        lists[st] = '<div class="empty-text">No tasks here</div>';
+      }
+      document.getElementById("list-" + st).innerHTML = lists[st];
+      document.getElementById("count-" + st).innerHTML = counts[st];
+    }
+
+    // numbers and progress bar
+    var total = tasks.length;
+    var doneCount = 0;
+    var progressCount = 0;
+    for (var j = 0; j < tasks.length; j++) {
+      if (tasks[j].status == "done") { doneCount++; }
+      if (tasks[j].status == "progress") { progressCount++; }
+    }
+    var percent = 0;
+    if (total > 0) {
+      percent = Math.round((doneCount / total) * 100);
+    }
+    document.getElementById("statTotal").innerHTML = total;
+    document.getElementById("statProgress").innerHTML = progressCount;
+    document.getElementById("statDone").innerHTML = doneCount;
+    document.getElementById("statLate").innerHTML = overdue;
+    document.getElementById("progressPercent").innerHTML = percent + "% (" + doneCount + " of " + total + " done)";
+    document.getElementById("progressFill").style.width = percent + "%";
+  }
+
+  // ---------- Move tasks ----------
+  function moveTask(id, step) {
+    var t = getTask(id);
+    var index = statuses.indexOf(t.status) + step;
+    if (index < 0 || index > 2) {
+      return;
+    }
+    t.status = statuses[index];
+    saveTasks();
+    showBoard();
+    showToast("Moved to " + statusName(t.status));
+  }
+
+  // ---------- Drag and drop ----------
+  function dragStart(event, id) {
+    dragId = id;
+    event.dataTransfer.setData("text", String(id));
+    event.target.className += " dragging";
+  }
+
+  function dragEnd(event) {
+    event.target.className = event.target.className.replace(" dragging", "");
+  }
+
+  function allowDrop(event, status) {
+    event.preventDefault();
+    document.getElementById("col-" + status).className = "column drag-over";
+  }
+
+  function leaveDrop(status) {
+    document.getElementById("col-" + status).className = "column";
+  }
+
+  function dropTask(event, status) {
+    event.preventDefault();
+    document.getElementById("col-" + status).className = "column";
+    var t = getTask(dragId);
+    if (t && t.status != status) {
+      t.status = status;
+      saveTasks();
+      showToast("Moved to " + statusName(status));
+    }
+    showBoard();
+  }
+
+  // ---------- Add / edit popup ----------
+  function openForm(id) {
+    editId = id;
+    document.getElementById("errTitle").innerHTML = "";
+    document.getElementById("errDesc").innerHTML = "";
+    document.getElementById("errPerson").innerHTML = "";
+    document.getElementById("errDue").innerHTML = "";
+
+    if (id == 0) {
+      document.getElementById("formTitle").innerHTML = "New Task";
+      document.getElementById("fTitle").value = "";
+      document.getElementById("fDesc").value = "";
+      document.getElementById("fPerson").value = "";
+      document.getElementById("fPriority").value = "Medium";
+      document.getElementById("fDue").value = "";
+    } else {
+      var t = getTask(id);
+      document.getElementById("formTitle").innerHTML = "Edit Task";
+      document.getElementById("fTitle").value = t.title;
+      document.getElementById("fDesc").value = t.desc;
+      document.getElementById("fPerson").value = t.person;
+      document.getElementById("fPriority").value = t.priority;
+      document.getElementById("fDue").value = t.due;
+    }
+    document.getElementById("formPopup").style.display = "block";
+  }
+
+  function closeForm() {
+    document.getElementById("formPopup").style.display = "none";
+  }
+
+  function saveTask() {
+    var title = document.getElementById("fTitle").value;
+    var desc = document.getElementById("fDesc").value;
+    var person = document.getElementById("fPerson").value;
+    var priority = document.getElementById("fPriority").value;
+    var due = document.getElementById("fDue").value;
+    var valid = true;
+
+    document.getElementById("errTitle").innerHTML = "";
+    document.getElementById("errDesc").innerHTML = "";
+    document.getElementById("errPerson").innerHTML = "";
+    document.getElementById("errDue").innerHTML = "";
+
+    if (title.length < 2) {
+      document.getElementById("errTitle").innerHTML = "Please enter the task title.";
+      valid = false;
+    }
+    if (desc.length < 5) {
+      document.getElementById("errDesc").innerHTML = "Please describe the task.";
+      valid = false;
+    }
+    if (person.length < 2) {
+      document.getElementById("errPerson").innerHTML = "Please enter who will do this task.";
+      valid = false;
+    }
+    if (due == "") {
+      document.getElementById("errDue").innerHTML = "Choose a due date.";
+      valid = false;
+    }
+    if (valid == false) {
+      return;
+    }
+
+    if (editId == 0) {
+      tasks.unshift({
+        id: new Date().getTime(),
+        title: title,
+        desc: desc,
+        person: person,
+        priority: priority,
+        due: due,
+        status: "todo"
+      });
+      showToast("Task added to To Do");
+    } else {
+      var t = getTask(editId);
+      t.title = title;
+      t.desc = desc;
+      t.person = person;
+      t.priority = priority;
+      t.due = due;
+      showToast("Task updated");
+    }
+
+    saveTasks();
+    closeForm();
+    showBoard();
+  }
+
+  // ---------- Delete ----------
+  function deleteTask(id) {
+    var t = getTask(id);
+    if (confirm("Delete the task \"" + t.title + "\"?")) {
+      for (var i = 0; i < tasks.length; i++) {
+        if (tasks[i].id == id) {
+          tasks.splice(i, 1);
+          break;
+        }
+      }
+      saveTasks();
+      showBoard();
+      showToast("Task deleted");
+    }
+  }
+
+  // Run when the page opens
+  loadTasks();
+  showBoard();
+</script>
+
+</body>
+</html>
